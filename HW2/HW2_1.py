@@ -70,7 +70,7 @@ def parse_response_uniprot(response):
 
 def process_ids(ids):
     uni = r'^[OPQ][0-9][A-Z0-9]{3}[0-9]|[A-NR-Z][0-9]([A-Z][A-Z0-9]{2}[0-9]){1,2}$'
-    ens = r'^ENS[A-Z]+[0-9]{11}$'
+    ens = r'^ENS(?:[A-Z]{3})?([A-Z]{1,2})[0-9]{11}$' #r'^ENS(?:[A-Z]{3})?(E|FM|G|GT|P|R|T)[0-9]{11}$'
 
     uniprot_ids = []
     ensembl_ids = []
