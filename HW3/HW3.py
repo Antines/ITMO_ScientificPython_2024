@@ -12,7 +12,7 @@ class IncreaseSpeed:
         if self.car.current_speed >= self.car.max_speed:
             raise StopIteration
         else:
-            self.car.current_speed = min(self.car.current_speed + 10, self.car.max_speed)
+            self.car.current_speed = self.car.current_speed + 10
             return self.car.current_speed
 
 class DecreaseSpeed(IncreaseSpeed):
@@ -23,7 +23,7 @@ class DecreaseSpeed(IncreaseSpeed):
         if self.car.current_speed <= 0:
             raise StopIteration
         else:
-            self.car.current_speed = max(self.car.current_speed - 10, 0)
+            self.car.current_speed = self.car.current_speed - 10
             return self.car.current_speed
 
 class Car:
@@ -40,31 +40,51 @@ class Car:
     def accelerate(self, upper_border=None):
         if self.state == "on road":
             if upper_border is not None and upper_border <= self.max_speed:
-                for speed in self.IncreaseSpeed:
-                    if speed > upper_border:
-                        break
-                    print(f"Accelerating: Current speed is {self.current_speed} km/h")
+                if self.current_speed >= upper_border:
+                    print(
+                        f"Cannot accelerate: Current speed {self.current_speed}")
+                else:
+                    for speed in self.IncreaseSpeed:
+                        print(f"Accelerating: Current speed is {self.current_speed} km/h")
+                        if self.current_speed >= upper_border:
+                            break
             else:
-                self.current_speed = min(self.current_speed + 10, self.max_speed)
-                print(f"Accelerating: Current speed is {self.current_speed} km/h")
+                if self.current_speed >= self.max_speed:
+                    print(
+                        f"Cannot accelerate: Current speed {self.current_speed}")
+                else:
+                    self.current_speed = min(self.current_speed + 10, self.max_speed)
+                    print(f"Accelerating: Current speed is {self.current_speed} km/h")
+        else:
+            print("Car is parked, cannot accelerate")
 
     def brake(self, lower_border=None):
         if self.state == "on road":
-            if lower_border is not None and lower_border <= self.max_speed:
-                for speed in self.DecreaseSpeed:
-                    if speed < lower_border:
-                        break
-                    print(f"Braking: Current speed is {self.current_speed} km/h")
+            if lower_border is not None and lower_border >= 0:
+                if self.current_speed <= lower_border:
+                    print(
+                        f"Cannot brake: Current speed {self.current_speed}")
+                else:
+                    for speed in self.DecreaseSpeed:
+                        print(f"Braking: Current speed is {self.current_speed} km/h")
+                        if self.current_speed <= lower_border:
+                            break
             else:
-                self.current_speed = max(self.current_speed - 10, 0)
-                print(f"Braking: Current speed is {self.current_speed} km/h")
+                if self.current_speed == 0:
+                    print("Cannot brake: Car is already stopped")
+                else:
+                    self.current_speed = max(self.current_speed - 10, 0)
+                    print(f"Braking: Current speed is {self.current_speed} km/h")
+        else:
+            print("Car is parked, cannot brake")
 
     def parking(self):
-        if Car.total_cars_on_road > 0:
+        if self.state == "on road":
+            self.state = "parked"
             Car.total_cars_on_road -= 1
             print("Car is parked")
         else:
-            print("Car is not on the road")
+            print("Already parked")
 
     @classmethod
     def total_cars(cls):
@@ -102,8 +122,12 @@ class Car:
 car1 = Car(90)
 car2 = Car(90)
 car3 = Car(90)
-car1.accelerate(60)
-car1.brake(30)
 car1.parking()
-print(Car.total_cars_on_road)
-Car.show_weather()
+car1.parking()
+car1.accelerate(60)
+car2.accelerate(60)
+car2.accelerate()
+car2.accelerate(20)
+car2.brake(40)
+car2.brake()
+car2.brake(50)
