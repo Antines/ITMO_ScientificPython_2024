@@ -8,63 +8,54 @@ Original file is located at
 
 ## Installing necessary packages
 """
-#
 # ! pip install biopython
 # ! pip install -q condacolab
-# import condacolab
+import condacolab
 # condacolab.install()
 # ! conda install -c bioconda seqkit
+from Bio import SeqIO
+import subprocess
+import re
+import requests
+import json
 
 """##SeqKit"""
-
-import subprocess
 
 def seqkitf(file):
     seqkit = subprocess.run(("seqkit", "stats", file, "-a"),
                             capture_output=True, text=True)
-    if seqkit.stdout.strip() == '':
+    if "invalid FASTA/Q format" in seqkit.stderr:
+        return f"Error: Failed to parse the file with seqkit"
+    elif seqkit.stdout.strip() == '':
         return seqkit.stderr.strip()
     else:
         return seqkit.stdout.strip()
 
 """##Biopython & Database Call"""
 
-from Bio import SeqIO
-import re
-
-sequences = SeqIO.parse('hw_file1.fasta', 'fasta')
-
 def get_id(seq):
-  ids = []
-  for i in seq:
-    if not re.match(r'^ENS(?:[A-Z]{3})?([A-Z]{1,2})[0-9]{11}$', i.id):
-      if '|' in i.id:
-        ids.append(i.id.split('|')[1])
-      else:
-        ids.append(i.id)
-  return ids
+    ids = []
+    for i in seq:
+        if re.match(r'^ENS(?:[A-Z]{3})?([A-Z]{1,2})[0-9]{11}\.?$', i.id):
+            ids.append(i.id)
+        elif '|' in i.id:
+            ids.append(i.id.split('|')[1])
+        else:
+            ids.append(i.id)
+    return ids
 
-fids = get_id(sequences)
-
-import requests
-import json
-
-def get_dbInfo(ids):
-    uni = r'^[OPQ][0-9][A-Z0-9]{3}[0-9]|[A-NR-Z][0-9]([A-Z][A-Z0-9]{2}[0-9]){1,2}$'
-    ens = r'^ENS(?:[A-Z]{3})?([A-Z]{1,2})[0-9]{11}$'
-
+def get_dbInfo(ids, file_type):
+    parsed_data = []
     uniprot_ids = []
     ensembl_ids = []
 
     for id in ids:
-        if re.match(uni, id):
+        if file_type == "Protein":
             uniprot_ids.append(id)
-        elif re.match(ens, id):
-            ensembl_ids.append(id)
+        else:
+            ensembl_ids.append(id.split('.')[0])
 
-    parsed_data = []
-
-    if uniprot_ids:
+    if file_type == "Protein":
         endpoint = "https://rest.uniprot.org/uniprotkb/accessions"
         params = {'accessions': uniprot_ids}
         response = requests.get(endpoint, params=params).json()
@@ -80,7 +71,7 @@ def get_dbInfo(ids):
             output += "Type: Protein\n\n"
             parsed_data.append(('Uniprot', output))
 
-    if ensembl_ids:
+    elif file_type == "DNA":
         server = "https://rest.ensembl.org"
         ext = "/lookup/id"
         headers = {"Content-Type": "application/json", "Accept": "application/json"}
@@ -94,33 +85,35 @@ def get_dbInfo(ids):
 
     return parsed_data
 
-
-ids = fids
-
 """##Final output"""
 
-file_name = 'hw_file1.fasta' #hw_file2.fasta | hw_file3.fasta
-sequences = SeqIO.parse(file_name, 'fasta')
+def process_fasta_file(file_name):
+    seqkit_output = seqkitf(file_name)
+    if "Error:" in seqkit_output:
+        print("Error:")
+        return "Cant parse the file"
+    
+    sequences = list(SeqIO.parse(file_name, 'fasta'))
+    file_type = "Protein" if any('|' in str(sequence.description) for sequence in sequences) else "DNA"
+    fids = get_id(sequences)
 
-# Display file statistics
-print('   File Statistics:')
-print()
-print(seqkitf(file_name))
-print()
-
-# Display sequence descriptions
-print("   Sequence Description:")
-print()
-for index, seq in enumerate(sequences, start=1):
-    print(f"Sequence {index}:")
-    print("--------------------")
-    print(seq)
+    print('   File Statistics:')
+    print(seqkit_output)
     print()
 
-# Display information from databases
-print("   Info from DB:")
-print()
-for i, (db, info) in enumerate(get_dbInfo(fids), start=1):
-    print(f"Database entry {i}: {db}")
-    print("--------------------")
-    print(info)
+    print("   Sequence Description:")
+    print()
+    for index, seq in enumerate(sequences, start=1):
+        print(f"Sequence {index}:")
+        print("--------------------")
+        print(seq)
+        print()
+
+    print("   Info from DB:")
+    print()
+    for i, (db, info) in enumerate(get_dbInfo(fids, file_type), start=1):
+        print(f"Database entry {i}: {db}")
+        print("--------------------")
+        print(info)
+
+process_fasta_file('hw_file1.fasta')  #'hw_file2.fasta' 'hw_file3.fasta'
